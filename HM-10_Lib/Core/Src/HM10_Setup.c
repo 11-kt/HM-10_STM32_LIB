@@ -66,10 +66,28 @@ setup_result setImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_im
 	return OK;
 }
 
-//hm10_baud getBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
-//
-//}
-//
+hm10_baud getBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ROLE_GET));
+	HAL_UART_Transmit(huart, getCommand(BAUD_GET), strlen((char *) getCommand(BAUD_GET)), 0xFFFF);
+
+	HAL_TIM_Base_Start(htim);
+
+	switch(dma_res[getResLength(BAUD_GET) - 1]) {
+		case BAUD_9600 + '0':
+			return BAUD_9600;
+		case BAUD_19200 + '0':
+			return BAUD_19200;
+		case BAUD_38400 + '0':
+			return BAUD_38400;
+		case BAUD_57600 + '0':
+			return BAUD_57600;
+		default:
+			return BAUD_115200;
+	}
+
+	return BAUD_115200;
+}
+
 hm10_role getRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ROLE_GET));
 	HAL_UART_Transmit(huart, getCommand(ROLE_GET), strlen((char *) getCommand(ROLE_GET)), 0xFFFF);
@@ -107,6 +125,17 @@ setup_result renewDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 setup_result resetDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RESET));
 	HAL_UART_Transmit(huart, getCommand(RESET), strlen((char*) getCommand(RESET)), 0xFFFF);
+
+	HAL_TIM_Base_Start(htim);
+
+	if (strcmp (dma_res, "OK") != 0) return HM10_ERROR;
+
+	return OK;
+}
+
+setup_result startHM10(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(START));
+	HAL_UART_Transmit(huart, getCommand(START), strlen((char*) getCommand(START)), 0xFFFF);
 
 	HAL_TIM_Base_Start(htim);
 

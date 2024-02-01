@@ -34,6 +34,7 @@ hm10_imme getImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
 
 setup_result renewDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
 setup_result resetDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
+setup_result startHM10(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
 
 char* concat_str(char * cmd, char mode);
 
