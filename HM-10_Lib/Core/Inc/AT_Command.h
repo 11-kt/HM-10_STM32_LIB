@@ -26,23 +26,23 @@ typedef enum {
 	START
 } AT_commands;
 
-enum Baud {
+typedef enum {
 	BAUD_9600,
 	BAUD_19200,
 	BAUD_38400,
 	BAUD_57600,
 	BAUD_115200
-};
+} hm10_baud;
 
-enum Role {
+typedef enum {
 	SLAVE,
 	MASTER
-};
+} hm10_role;
 
-enum Imme {
+typedef enum {
 	BASE,
 	ONLY_AT
-};
+} hm10_imme;
 
 struct AT_command {
 	char * command;
