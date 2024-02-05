@@ -13,8 +13,6 @@
 #include <string.h>
 #include "stdlib.h"
 
-extern UART_HandleTypeDef huart4;
-
 typedef enum {
 	OK,
 	RENEW_OK,
@@ -37,5 +35,6 @@ setup_result resetDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
 setup_result startHM10(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
 
 char* concat_str(char * cmd, char mode);
+void clearingBuf();
 
 #endif /* INC_HM10_SETUP_H_ */

@@ -10,6 +10,8 @@
 static char dma_res[30];
 
 setup_result checkConnection(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(AT));
 	HAL_UART_Transmit(huart, getCommand(AT), strlen((char *) getCommand(AT)), 0xFFFF);
 
@@ -21,6 +23,8 @@ setup_result checkConnection(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart)
 }
 
 setup_result setBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_baud baudrate) {
+	clearingBuf();
+
 	char tx_baud = baudrate + '0';
 	char* tx_cmd = concat_str((char*) getCommand(BAUD_SET), tx_baud);
 
@@ -37,6 +41,8 @@ setup_result setBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm1
 }
 
 setup_result setRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_role role) {
+	clearingBuf();
+
 	char tx_role = role + '0';
 	char* tx_cmd = concat_str((char*) getCommand(ROLE_SET), tx_role);
 
@@ -52,6 +58,8 @@ setup_result setRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_ro
 }
 
 setup_result setImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_imme imme) {
+	clearingBuf();
+
 	char tx_imme = imme + '0';
 	char* tx_cmd = concat_str((char*) getCommand(IMME_SET), tx_imme);
 
@@ -67,6 +75,8 @@ setup_result setImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_im
 }
 
 hm10_baud getBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ROLE_GET));
 	HAL_UART_Transmit(huart, getCommand(BAUD_GET), strlen((char *) getCommand(BAUD_GET)), 0xFFFF);
 
@@ -89,6 +99,8 @@ hm10_baud getBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 }
 
 hm10_role getRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ROLE_GET));
 	HAL_UART_Transmit(huart, getCommand(ROLE_GET), strlen((char *) getCommand(ROLE_GET)), 0xFFFF);
 
@@ -100,6 +112,8 @@ hm10_role getRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 }
 
 hm10_imme getImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(IMME_GET));
 	HAL_UART_Transmit(huart, getCommand(IMME_GET), strlen((char *) getCommand(IMME_GET)), 0xFFFF);
 
@@ -112,6 +126,8 @@ hm10_imme getImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 }
 
 setup_result renewDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RENEW));
 	HAL_UART_Transmit(huart, getCommand(RENEW), strlen((char*) getCommand(RENEW)), 0xFFFF);
 
@@ -123,6 +139,8 @@ setup_result renewDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 }
 
 setup_result resetDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RESET));
 	HAL_UART_Transmit(huart, getCommand(RESET), strlen((char*) getCommand(RESET)), 0xFFFF);
 
@@ -134,6 +152,8 @@ setup_result resetDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
 }
 
 setup_result startHM10(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart) {
+	clearingBuf();
+
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(START));
 	HAL_UART_Transmit(huart, getCommand(START), strlen((char*) getCommand(START)), 0xFFFF);
 
@@ -155,4 +175,8 @@ char* concat_str(char * cmd, char mode) {
 	strcat(result, "\n");
 
 	return result;
+}
+
+void clearingBuf() {
+	memset(dma_res, 0, strlen(dma_res));
 }
