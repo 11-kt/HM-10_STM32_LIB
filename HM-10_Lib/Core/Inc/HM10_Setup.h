@@ -4,14 +4,17 @@
  *  Created on: Jan 31, 2024
  *      Author: Andrianov Vitaly
  */
-
-#ifndef INC_HM10_SETUP_H_
-#define INC_HM10_SETUP_H_
+#ifndef INC_HM_10_HM10_SETUP_H_
+#define INC_HM_10_HM10_SETUP_H_
 
 #include "stm32l1xx_hal.h"
 #include "AT_Command.h"
+#include "HM10_Setup.h"
+#include "utils/delay.h"
 #include <string.h>
 #include "stdlib.h"
+
+#define delayUs 0x0186A0 // default setup delay
 
 typedef enum {
 	OK,
@@ -21,20 +24,25 @@ typedef enum {
 	HM10_ERROR
 } setup_result;
 
-setup_result checkConnection(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-setup_result setBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_baud baudrate);
-setup_result setRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_role role);
-setup_result setImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart, hm10_imme imme);
-
-hm10_baud getBaudRate(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-hm10_role getRole(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-hm10_imme getImme(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-
-setup_result renewDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-setup_result resetDevice(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-setup_result startHM10(TIM_HandleTypeDef *htim, UART_HandleTypeDef *huart);
-
-char* concat_str(char * cmd, char mode);
-void clearingBuf();
-
+//-------------------------------------------------------------------------------------------------------------------------//
+	setup_result checkConnection(UART_HandleTypeDef *huart); 					// Check UART connection
+	setup_result setBaudRate(UART_HandleTypeDef *huart, hm10_baud baudrate);	// Set HM10 baudrate
+	setup_result setRole(UART_HandleTypeDef *huart, hm10_role role);			// set HM10 role (master/slave)
+	setup_result setImme(UART_HandleTypeDef *huart, hm10_imme imme);			// set working mode (at only/at + data)
+	setup_result setName(UART_HandleTypeDef *huart, char * name);				// set HM10 BLE name
+//-------------------------------------------------------------------------------------------------------------------------//
+	hm10_baud getBaudRate(UART_HandleTypeDef *huart);							// get current HM10 baudrate
+	hm10_role getRole(UART_HandleTypeDef *huart);								// get current HM10 role
+	hm10_imme getImme(UART_HandleTypeDef *huart);								// get current HM10 working mode
+//-------------------------------------------------------------------------------------------------------------------------//
+	setup_result renewDevice(UART_HandleTypeDef *huart);						// HM10 factory reset
+	setup_result resetDevice(UART_HandleTypeDef *huart);						// reboot HM10
+	setup_result startHM10(UART_HandleTypeDef *huart);							// start HM10 to transmit and receive data
+//-------------------------------------------------------------------------------------------------------------------------//
+	setup_result setupSlave(UART_HandleTypeDef *huart);							// setup Slave mode
+//-------------------------------------------------------------------------------------------------------------------------//
+	static char* concat_str(char * cmd, char mode);								// Concat string command and mode char
+	static char* concat_cmd_str(char * cmd, char * str);						// Concat string commands
+	static void clearingBuf();													// Clear DMA receive buf
+//-------------------------------------------------------------------------------------------------------------------------//
 #endif /* INC_HM10_SETUP_H_ */
