@@ -31,12 +31,12 @@ setup_result setupSlave(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint1
 	usDelay(delayUs);
 
 	if (getRole(huart) == MASTER) {
-		setRole(huart, SLAVE);
+		if (setRole(huart, SLAVE) == HM10_ERROR) return HM10_ERROR;
 	}
 	usDelay(delayUs);
 
 	if (getImme(huart) == ONLY_AT) {
-		setImme(huart, BASE);
+		if (setImme(huart, BASE) == HM10_ERROR) return HM10_ERROR;
 	}
 	usDelay(delayUs);
 
@@ -47,6 +47,103 @@ setup_result setupSlave(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint1
 	usDelay(delayUs);
 
 	return OK;
+}
+
+/**
+  * @brief  Setup master mode
+  * @note   Control setup delay value
+  * @param  Current HM10 huart
+  * @param  Current HM10 brk port
+  * @param  Current HM10 brk pin
+  * @retval setup_result
+  */
+setup_result setupMaster(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint16_t brk_Pin) {
+
+	HAL_GPIO_WritePin(brk_port, brk_Pin, RESET);
+	usDelay(delayUs);
+	HAL_GPIO_WritePin(brk_port, brk_Pin, SET);
+	usDelay(delayUs);
+
+	setup_result connection = checkConnection(huart);
+	if (connection != OK) {
+		return HM10_ERROR;
+	}
+	usDelay(delayUs);
+
+	if (getRole(huart) == SLAVE) {
+		if (setRole(huart, MASTER) == HM10_ERROR) return HM10_ERROR;
+	}
+	usDelay(delayUs);
+
+	if (getImme(huart) == BASE) {
+		if (setImme(huart, ONLY_AT) == HM10_ERROR) return HM10_ERROR;
+	}
+	usDelay(delayUs);
+
+	setName(huart, "HM-10_Master");
+	usDelay(delayUs);
+
+	resetDevice(huart);
+	usDelay(delayUs);
+
+	return OK;
+}
+
+/**
+  * @brief  Connect device to mac addr
+  * @note   Only master mode and only default mac addr (check header)
+  * @param  Current HM10 huart
+  * @retval setup_result hm10_connection_status
+  */
+hm10_connection_status connectOtherHM10(UART_HandleTypeDef *huart) {
+	clearingBuf();
+
+	if (getRole(huart) == SLAVE) {
+		return disconnected;
+	}
+
+	getAddr(huart);
+	char *token = strtok(dma_res, ":");
+	token = strtok(NULL, ":");
+	if (strcmp (token, default_mac_addr1) == 0) {
+		token = default_mac_addr2;
+	}
+	else if (strcmp (token, default_mac_addr2) == 0) {
+		token = default_mac_addr2;
+	}
+	else {
+		return disconnected;
+	}
+
+	while (connectToAddr(huart, token) != connected) {}
+
+	return connected;
+}
+
+/**
+  * @brief  Connect device to mac addr
+  * @note   Only master mode
+  * @param  Current HM10 huart
+  * @param  Mac addr slave device
+  * @retval setup_result hm10_connection_status
+  */
+hm10_connection_status connectToAddr(UART_HandleTypeDef *huart, char* addr) {
+	clearingBuf();
+
+	if (getRole(huart) == SLAVE) {
+		return disconnected;
+	}
+
+	char* tx_cmd = concat_cmd_str((char *) getCommand(CONN), addr);
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ADDR));
+	HAL_UART_Transmit(huart, tx_cmd, strlen(tx_cmd), 0xFFFF);
+
+	usDelay(delayUs);
+
+	if (strcmp (dma_res, "OK+CONNA") != 0) return disconnected;
+
+	return connected;
 }
 
 /**
@@ -234,6 +331,20 @@ hm10_imme getImme(UART_HandleTypeDef *huart) {
 }
 
 /**
+  * @brief  Get current device mac addr
+  * @param  Current HM10 huart
+  * @retval hm10_imme
+  */
+void getAddr(UART_HandleTypeDef *huart) {
+	clearingBuf();
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ADDR));
+	HAL_UART_Transmit(huart, getCommand(ADDR), strlen((char *) getCommand(ADDR)), 0xFFFF);
+
+	usDelay(delayUs);
+}
+
+/**
   * @brief  Factory reset HM10
   * @param  Current HM10 huart
   * @retval setup_result
@@ -293,15 +404,16 @@ setup_result startHM10(UART_HandleTypeDef *huart) {
   * @param  current mode
   * @retval concat command
   */
-static char* concat_str(char * cmd, char mode) {
+char* concat_str(char * cmd, char mode) {
 	const size_t len1 = strlen(cmd);
 
-	char *result = malloc(len1 + 4);
+	char *result = (char *) malloc(len1 + 4);
 
 	strcpy(result, cmd);
 	result[len1] = mode;
-	strcat(result, "\r");
-	strcat(result, "\n");
+	result[len1+1] = '\r';
+	result[len1+2] = '\n';
+	result[len1+3] = '\0';
 
 	return result;
 }
@@ -322,6 +434,7 @@ char* concat_cmd_str(char * cmd, char * str) {
 	strcat(result, str);
 	strcat(result, "\r");
 	strcat(result, "\n");
+	strcat(result, "\0");
 
 	return result;
 }
