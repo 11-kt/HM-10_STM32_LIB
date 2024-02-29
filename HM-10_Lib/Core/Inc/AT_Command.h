@@ -23,7 +23,8 @@ typedef enum {
 	NAME_SET,
 	ROLE_GET,
 	ROLE_SET,
-	START
+	START,
+	ADDR
 } AT_commands;
 
 typedef enum {
@@ -43,6 +44,11 @@ typedef enum {
 	BASE,
 	ONLY_AT
 } hm10_imme;
+
+typedef enum {
+	connected,
+	disconnected
+} hm10_connection_status;
 
 struct AT_command {
 	char * command;

@@ -20,7 +20,8 @@ struct AT_command AT_command_list[] = {
 		{"AT+NAME", -1},
 		{"AT+ROLE?\r\n", 8},
 		{"AT+ROLE", 8},
-		{"AT+START\r\n", 8}
+		{"AT+START\r\n", 8},
+		{"AT+ADDR?\r\n", 20}
 };
 
 uint8_t * getCommand(AT_commands command) {
