@@ -13,30 +13,38 @@ static char dma_res[30]; // DMA receive buffer
   * @brief  Setup slave mode
   * @note   Control setup delay value
   * @param  Current HM10 huart
+  * @param  Current HM10 brk port
+  * @param  Current HM10 brk pin
   * @retval setup_result
   */
-setup_result setupSlave(UART_HandleTypeDef *huart) {
+setup_result setupSlave(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint16_t brk_Pin) {
+
+	HAL_GPIO_WritePin(brk_port, brk_Pin, RESET);
+	usDelay(delayUs);
+	HAL_GPIO_WritePin(brk_port, brk_Pin, SET);
+	usDelay(delayUs);
 
 	setup_result connection = checkConnection(huart);
 	if (connection != OK) {
 		return HM10_ERROR;
 	}
-
 	usDelay(delayUs);
 
 	if (getRole(huart) == MASTER) {
 		setRole(huart, SLAVE);
 	}
-
 	usDelay(delayUs);
 
 	if (getImme(huart) == ONLY_AT) {
 		setImme(huart, BASE);
 	}
-
 	usDelay(delayUs);
 
 	setName(huart, "HM-10_Slave");
+	usDelay(delayUs);
+
+	resetDevice(huart);
+	usDelay(delayUs);
 
 	return OK;
 }
@@ -252,7 +260,7 @@ setup_result resetDevice(UART_HandleTypeDef *huart) {
 	clearingBuf();
 
 	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RESET));
-	HAL_UART_Transmit(huart, getCommand(RESET), strlen((char*) getCommand(RESET)), 0xFFFF);
+	HAL_UART_Transmit(huart, getCommand(RESET1), strlen((char*) getCommand(RESET1)), 0xFFFF);
 
 	usDelay(delayUs);
 
