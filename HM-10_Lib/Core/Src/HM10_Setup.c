@@ -30,6 +30,14 @@ setup_result setupSlave(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint1
 	}
 	usDelay(delayUs);
 
+	renewDevice(huart);
+	usDelay(delayUs);
+
+	if (getPower(huart) != dbm_6) {
+		if (setPower(huart, dbm_6) == HM10_ERROR) return HM10_ERROR;
+	}
+	usDelay(delayUs);
+
 	if (getRole(huart) == MASTER) {
 		if (setRole(huart, SLAVE) == HM10_ERROR) return HM10_ERROR;
 	}
@@ -70,6 +78,13 @@ setup_result setupMaster(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint
 	}
 	usDelay(delayUs);
 
+	renewDevice(huart);
+	usDelay(delayUs);
+
+	if (getPower(huart) != dbm_6) {
+		if (setPower(huart, dbm_6) == HM10_ERROR) return HM10_ERROR;
+	}
+
 	if (getRole(huart) == SLAVE) {
 		if (setRole(huart, MASTER) == HM10_ERROR) return HM10_ERROR;
 	}
@@ -78,9 +93,6 @@ setup_result setupMaster(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint
 	if (getImme(huart) == BASE) {
 		if (setImme(huart, ONLY_AT) == HM10_ERROR) return HM10_ERROR;
 	}
-	usDelay(delayUs);
-
-	setName(huart, "HM-10_Master");
 	usDelay(delayUs);
 
 	resetDevice(huart);
@@ -101,21 +113,25 @@ hm10_connection_status connectOtherHM10(UART_HandleTypeDef *huart) {
 	if (getRole(huart) == SLAVE) {
 		return disconnected;
 	}
+	usDelay(delayUs);
 
 	getAddr(huart);
+	usDelay(delayUs);
 	char *token = strtok(dma_res, ":");
 	token = strtok(NULL, ":");
 	if (strcmp (token, default_mac_addr1) == 0) {
 		token = default_mac_addr2;
 	}
 	else if (strcmp (token, default_mac_addr2) == 0) {
-		token = default_mac_addr2;
+		token = default_mac_addr1;
 	}
 	else {
 		return disconnected;
 	}
 
-	while (connectToAddr(huart, token) != connected) {}
+	while (connectToAddr(huart, token) != connected) {
+		clearingBuf();
+	}
 
 	return connected;
 }
@@ -128,23 +144,25 @@ hm10_connection_status connectOtherHM10(UART_HandleTypeDef *huart) {
   * @retval setup_result hm10_connection_status
   */
 hm10_connection_status connectToAddr(UART_HandleTypeDef *huart, char* addr) {
-	clearingBuf();
-
 	if (getRole(huart) == SLAVE) {
 		return disconnected;
 	}
 
 	char* tx_cmd = concat_cmd_str((char *) getCommand(CONN), addr);
 
-	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(ADDR));
-	HAL_UART_Transmit(huart, tx_cmd, strlen(tx_cmd), 0xFFFF);
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(CONN));
+	HAL_UART_Transmit(huart, (uint8_t *) tx_cmd, strlen(tx_cmd), 0xFFFF);
 
-	usDelay(delayUs);
+	HAL_Delay(250);
 
-	if (strcmp (dma_res, "OK+CONNA") != 0) return disconnected;
+	if (strcmp (dma_res, "OK+CONNA\r\nOK+CONN\r\n") != 0) {
+		return disconnected;
+	}
 
 	return connected;
 }
+
+
 
 /**
   * @brief  Check connection (sending AT command)
@@ -265,6 +283,31 @@ setup_result setName(UART_HandleTypeDef *huart, char * name) {
 }
 
 /**
+  * @brief  Set HM10 power
+  * @note   After this fun need to reset (reboot) HM10
+  * @param  Current HM10 huart
+  * @param  hm10_power
+  * @retval setup_result
+  */
+setup_result setPower(UART_HandleTypeDef *huart, hm10_power power) {
+	clearingBuf();
+
+	char tx_power = power + '0';
+	char* tx_cmd = concat_str((char*) getCommand(POWER_SET), tx_power);
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(POWER_SET));
+	HAL_UART_Transmit(huart, (uint8_t *) tx_cmd, strlen(tx_cmd), 0xFFFF);
+
+	usDelay(delayUs);
+
+	free(tx_cmd);
+	int tx_res = dma_res[getResLength(POWER_SET) - 1] - '0';
+	if (tx_res != 0 && tx_res != 1 && tx_res != 2 && tx_res != 3) return HM10_ERROR;
+
+	return OK;
+}
+
+/**
   * @brief  Get HM10 baudrate mode
   * @param  Current HM10 huart
   * @retval hm10_baud
@@ -333,7 +376,7 @@ hm10_imme getImme(UART_HandleTypeDef *huart) {
 /**
   * @brief  Get current device mac addr
   * @param  Current HM10 huart
-  * @retval hm10_imme
+  * @retval void
   */
 void getAddr(UART_HandleTypeDef *huart) {
 	clearingBuf();
@@ -342,6 +385,32 @@ void getAddr(UART_HandleTypeDef *huart) {
 	HAL_UART_Transmit(huart, getCommand(ADDR), strlen((char *) getCommand(ADDR)), 0xFFFF);
 
 	usDelay(delayUs);
+}
+
+/**
+  * @brief  Get current power HM10 device
+  * @param  Current HM10 huart
+  * @retval hm10_power
+  */
+hm10_power getPower(UART_HandleTypeDef *huart) {
+	clearingBuf();
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(POWER_GET));
+	HAL_UART_Transmit(huart, getCommand(POWER_GET), strlen((char *) getCommand(POWER_GET)), 0xFFFF);
+
+	usDelay(delayUs);
+
+	switch(dma_res[getResLength(POWER_GET) - 1]) {
+		case dbm_m23 + '0':
+			return dbm_m23;
+		case dbm_m6 + '0':
+			return dbm_m6;
+		case dbm_0 + '0':
+			return dbm_0;
+		default:
+			return dbm_6;
+	}
+	return dbm_0;
 }
 
 /**
@@ -370,12 +439,12 @@ setup_result renewDevice(UART_HandleTypeDef *huart) {
 setup_result resetDevice(UART_HandleTypeDef *huart) {
 	clearingBuf();
 
-	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RESET));
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RESET1));
 	HAL_UART_Transmit(huart, getCommand(RESET1), strlen((char*) getCommand(RESET1)), 0xFFFF);
 
 	usDelay(delayUs);
 
-	if (strcmp (dma_res, "OK") != 0) return HM10_ERROR;
+	if (strcmp (dma_res, "OK+RESET") != 0) return HM10_ERROR;
 
 	return OK;
 }
@@ -445,5 +514,5 @@ char* concat_cmd_str(char * cmd, char * str) {
   * @retval void
   */
 void clearingBuf() {
-	memset(dma_res, 0, strlen(dma_res));
+	memset(dma_res, 0, 30);
 }
