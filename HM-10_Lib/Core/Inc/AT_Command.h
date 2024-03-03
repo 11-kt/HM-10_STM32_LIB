@@ -29,7 +29,11 @@ typedef enum {
 	START,
 	ADDR,
 	POWER_GET,
-	POWER_SET
+	POWER_SET,
+	MODE_GET,
+	MODE_SET,
+	TEMP_GET,
+	RSSI_GET
 } AT_commands;
 
 /**
@@ -68,6 +72,18 @@ typedef enum {
 	dbm_0,
 	dbm_6,
 } hm10_power;
+
+/**
+  * HM10 working mode when connected:
+  * 0 - Only data,
+  * 1 - data + at from ble connected device,
+  * 2 - data + at + pio
+ */
+typedef enum {
+	MODE_0,
+	MODE_1,
+	MODE_2,
+} hm10_mode;
 
 /**
   * connection to other device result
