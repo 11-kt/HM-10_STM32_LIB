@@ -26,7 +26,11 @@ struct AT_command AT_command_list[] = {
 		{"AT+START\r\n", 8},
 		{"AT+ADDR?\r\n", 20},
 		{"AT+POWE?\r\n", 8},
-		{"AT+POWE", 8}
+		{"AT+POWE", 8},
+		{"AT+MODE?\r\n", 8},
+		{"AT+MODE", 8},
+		{"AT+TEMP?", 13},
+		{"AT+RSSI?", 12},
 };
 
 /**
