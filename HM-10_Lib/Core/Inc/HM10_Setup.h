@@ -34,12 +34,16 @@ typedef enum {
 	setup_result setImme(UART_HandleTypeDef *huart, hm10_imme imme);								// set working mode (at only/at + data)
 	setup_result setName(UART_HandleTypeDef *huart, char * name);									// set HM10 BLE name
 	setup_result setPower(UART_HandleTypeDef *huart, hm10_power power);								// set HM10 power
+	setup_result setMode(UART_HandleTypeDef *huart, hm10_role mode);								// set HM10 working mode (when device con)
 //---------------------------------------------------------------------------------------------------------------------------------------------//
 	hm10_baud getBaudRate(UART_HandleTypeDef *huart);												// get current HM10 baudrate
 	hm10_role getRole(UART_HandleTypeDef *huart);													// get current HM10 role
 	hm10_imme getImme(UART_HandleTypeDef *huart);													// get current HM10 working mode
 	void getAddr(UART_HandleTypeDef *huart);														// get current HM10 mac addr
 	hm10_power getPower(UART_HandleTypeDef *huart);													// get current HM10 power
+	hm10_mode getMode(UART_HandleTypeDef *huart);													// get current HM10 working mode (when con)
+	void getTemp(UART_HandleTypeDef *huart,  char* temp_str);										// get connected HM10 temperature
+	void getRSSI(UART_HandleTypeDef *huart,  char* rssi_str);										// get connected HM10 RSSI
 //---------------------------------------------------------------------------------------------------------------------------------------------//
 	setup_result renewDevice(UART_HandleTypeDef *huart);											// HM10 factory reset
 	setup_result resetDevice(UART_HandleTypeDef *huart);											// reboot HM10

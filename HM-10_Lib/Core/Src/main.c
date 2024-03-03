@@ -103,13 +103,18 @@ int main(void)
 
   setupMaster(&huart4, brk_hm10_GPIO_Port, brk_hm10_Pin);
   connectOtherHM10(&huart4);
+  char temp[10] = {'\0'};
+  char rssi[10] = {'\0'};
   /* USER CODE END 2 */
-
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
 	  HAL_UART_Transmit(&huart4, (uint8_t*) "from master\r\n", 13, 0xFFFF);
+	  HAL_Delay(500);
+	  getTemp(&huart4, temp);
+	  HAL_Delay(500);
+	  getRSSI(&huart4, rssi);
 	  HAL_Delay(500);
     /* USER CODE END WHILE */
 

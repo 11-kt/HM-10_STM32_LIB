@@ -48,7 +48,9 @@ setup_result setupSlave(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint1
 	}
 	usDelay(delayUs);
 
-	setName(huart, "HM-10_Slave");
+	if (getMode(huart) != MODE_1) {
+		if (setMode(huart, MODE_1) == HM10_ERROR) return HM10_ERROR;
+	}
 	usDelay(delayUs);
 
 	resetDevice(huart);
@@ -95,6 +97,11 @@ setup_result setupMaster(UART_HandleTypeDef *huart, GPIO_TypeDef *brk_port, uint
 	}
 	usDelay(delayUs);
 
+	if (getMode(huart) != MODE_1) {
+		if (setMode(huart, MODE_1) == HM10_ERROR) return HM10_ERROR;
+	}
+	usDelay(delayUs);
+
 	resetDevice(huart);
 	usDelay(delayUs);
 
@@ -115,8 +122,11 @@ hm10_connection_status connectOtherHM10(UART_HandleTypeDef *huart) {
 	}
 	usDelay(delayUs);
 
+	clearingBuf();
+
 	getAddr(huart);
 	usDelay(delayUs);
+
 	char *token = strtok(dma_res, ":");
 	token = strtok(NULL, ":");
 	if (strcmp (token, default_mac_addr1) == 0) {
@@ -128,7 +138,7 @@ hm10_connection_status connectOtherHM10(UART_HandleTypeDef *huart) {
 	else {
 		return disconnected;
 	}
-
+	clearingBuf();
 	while (connectToAddr(huart, token) != connected) {
 		clearingBuf();
 	}
@@ -144,9 +154,6 @@ hm10_connection_status connectOtherHM10(UART_HandleTypeDef *huart) {
   * @retval setup_result hm10_connection_status
   */
 hm10_connection_status connectToAddr(UART_HandleTypeDef *huart, char* addr) {
-	if (getRole(huart) == SLAVE) {
-		return disconnected;
-	}
 
 	char* tx_cmd = concat_cmd_str((char *) getCommand(CONN), addr);
 
@@ -155,14 +162,12 @@ hm10_connection_status connectToAddr(UART_HandleTypeDef *huart, char* addr) {
 
 	HAL_Delay(250);
 
-	if (strcmp (dma_res, "OK+CONNA\r\nOK+CONN\r\n") != 0) {
+	if (dma_res[16] != 'N' && dma_res[17] != 'N') {
 		return disconnected;
 	}
 
 	return connected;
 }
-
-
 
 /**
   * @brief  Check connection (sending AT command)
@@ -308,6 +313,35 @@ setup_result setPower(UART_HandleTypeDef *huart, hm10_power power) {
 }
 
 /**
+  * @brief  Set HM10 working mode (when device connected)
+  * @note   After this fun need to reset (reboot) HM10
+  * @param  Current HM10 huart
+  * @param  hm10_mode
+  * @retval setup_result
+  */
+setup_result setMode(UART_HandleTypeDef *huart, hm10_role mode) {
+	clearingBuf();
+
+	char tx_mode = mode + '0';
+	char* tx_cmd = concat_str((char*) getCommand(MODE_SET), tx_mode);
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(MODE_SET));
+	HAL_UART_Transmit(huart, (uint8_t *) tx_cmd, strlen(tx_cmd), 0xFFFF);
+
+	usDelay(delayUs);
+
+	free(tx_cmd);
+
+	if (
+			strcmp (dma_res, "OK+Set:0") != 0 &&
+			strcmp (dma_res, "OK+Set:1") != 0 &&
+			strcmp (dma_res, "OK+Set:2") != 0
+		) return HM10_ERROR;
+
+	return OK;
+}
+
+/**
   * @brief  Get HM10 baudrate mode
   * @param  Current HM10 huart
   * @retval hm10_baud
@@ -370,7 +404,6 @@ hm10_imme getImme(UART_HandleTypeDef *huart) {
 	if (dma_res[getResLength(IMME_GET) - 1] == BASE + '0') return BASE;
 
 	return ONLY_AT;
-
 }
 
 /**
@@ -411,6 +444,83 @@ hm10_power getPower(UART_HandleTypeDef *huart) {
 			return dbm_6;
 	}
 	return dbm_0;
+}
+
+/**
+  * @brief  Get HM10 working mode (when device connected)
+  * @param  Current HM10 huart
+  * @retval hm10_mode
+  */
+hm10_mode getMode(UART_HandleTypeDef *huart) {
+	clearingBuf();
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(MODE_GET));
+	HAL_UART_Transmit(huart, getCommand(MODE_GET), strlen((char *) getCommand(MODE_GET)), 0xFFFF);
+
+	usDelay(delayUs);
+
+	if (dma_res[getResLength(MODE_GET) - 1] == BASE + '0') return MODE_0;
+	else if (dma_res[getResLength(MODE_GET) - 1] == BASE + '1') return MODE_1;
+
+	return MODE_2;
+}
+
+/**
+  * @brief  Get connected HM10 temperature
+  * @note   Need mode1 or mode2
+  * @param  Current HM10 huart
+  * @param  result temp value string
+  * @retval void
+  */
+void getTemp(UART_HandleTypeDef *huart, char* temp_str) {
+	clearingBuf();
+
+	uint8_t dotFlag = 0;
+	uint8_t currentChar = 0;
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(TEMP_GET));
+	HAL_UART_Transmit(huart, getCommand(TEMP_GET), strlen((char *) getCommand(TEMP_GET)), 0xFFFF);
+
+	usDelay(delayUs);
+
+	for (uint8_t i=0; i < strlen(dma_res); i++) {
+		if (currentChar == strlen(temp_str) - 1) break;
+		else if (i > 0 && dma_res[i - 1] == ':') dotFlag = 1;
+
+		if (dotFlag) {
+			temp_str[currentChar] = dma_res[i];
+			currentChar++;
+		}
+	}
+}
+
+/**
+  * @brief  Get connected HM10 RSSI (received signal strength indicator)
+  * @note   Need mode1 or mode2
+  * @param  Current HM10 huart
+  * @param  result rssi value string
+  * @retval void
+  */
+void getRSSI(UART_HandleTypeDef *huart, char* rssi_str) {
+	clearingBuf();
+
+	uint8_t dotFlag = 0;
+	uint8_t currentChar = 0;
+
+	HAL_UART_Receive_DMA(huart, (uint8_t *) dma_res, getResLength(RSSI_GET));
+	HAL_UART_Transmit(huart, getCommand(RSSI_GET), strlen((char *) getCommand(RSSI_GET)), 0xFFFF);
+
+	usDelay(delayUs);
+
+	for (uint8_t i=0; i < strlen(dma_res); i++) {
+		if (currentChar == strlen(rssi_str) - 1) break;
+		else if (dma_res[i] == ':') dotFlag = 1;
+
+		if (dotFlag) {
+			rssi_str[currentChar] = dma_res[i];
+			currentChar++;
+		}
+	}
 }
 
 /**
